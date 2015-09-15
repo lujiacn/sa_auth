@@ -1,7 +1,9 @@
 package sa_auth
 
 import (
+	"errors"
 	"fmt"
+
 	"github.com/mavricknz/ldap"
 	//"reflect"
 )
@@ -39,11 +41,17 @@ func SaAuthCheck(
 	}
 	defer l.Close()
 
+	//blank pasword is not acceptable
+	if passwd == "" {
+		err := errors.New("Please fill in password!")
+		user.Err = err
+		return user
+	}
 	//authentification (Bind)
 	loginname := account + "@" + domain
 	err = l.Bind(loginname, passwd)
 	if err != nil {
-		fmt.Printf("error: %v", err)
+		err = errors.New("Wrong password or account.")
 		user.Err = err
 		return user
 	}
