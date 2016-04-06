@@ -3,7 +3,6 @@ package sa_auth
 import (
 	"errors"
 	"fmt"
-
 	"github.com/mavricknz/ldap"
 	//"reflect"
 )
@@ -21,21 +20,21 @@ type UserAuth struct {
 //login check, input account, domain, passwd, server, port and base_dn for search
 func SaAuthCheck(
 	account,
-	domain,
 	passwd,
+	domain,
 	ldap_server string,
 	ldap_port uint16,
-	base_dn string) UserAuth {
+	base_dn string,
+) UserAuth {
 
 	user := UserAuth{Login: false, HasThumb: false}
 	var err error
 
 	//connect
-	fmt.Println("Connecting")
-	l := ldap.NewLDAPConnection(ldap_server, ldap_port)
+	var l *ldap.LDAPConnection
+	l = ldap.NewLDAPConnection(ldap_server, ldap_port)
 	err = l.Connect()
 	if err != nil {
-		fmt.Printf("LDAP connectiong error: %v", err)
 		user.Err = err
 		return user
 	}
@@ -51,12 +50,11 @@ func SaAuthCheck(
 	loginname := account + "@" + domain
 	err = l.Bind(loginname, passwd)
 	if err != nil {
-		err = errors.New("Wrong password or account.")
+		// err = errors.New("Wrong password or account.")
 		user.Err = err
 		return user
 	}
 	user.Login = true
-	fmt.Print("Authenticated")
 
 	//Search, Get entries and Save entry
 	attributes := []string{}
