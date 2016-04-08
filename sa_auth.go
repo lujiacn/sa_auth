@@ -1,10 +1,12 @@
 package sa_auth
 
 import (
-	"errors"
+	// "errors"
 	"fmt"
 	"github.com/mavricknz/ldap"
+	// "github.com/go-ldap/ldap"
 	//"reflect"
+	"crypto/tls"
 )
 
 type UserAuth struct {
@@ -17,45 +19,64 @@ type UserAuth struct {
 	Err      error
 }
 
-//login check, input account, domain, passwd, server, port and base_dn for search
-func SaAuthCheck(
-	account,
-	passwd,
-	domain,
-	ldap_server string,
-	ldap_port uint16,
-	base_dn string,
-) UserAuth {
+type saLdap struct {
+	ldapServer     string
+	ldapPort       uint16
+	ldapSSL        bool
+	baseDn         string
+	bindUserName   string
+	bindUserPasswd string
+	ldap           *ldap.LDAPConnection
+}
 
-	user := UserAuth{Login: false, HasThumb: false}
-	var err error
+func NewSaLdap(ldapServer string, ldapPort uint16,
+	ldapSSL bool,
+	baseDn string, userName, userPasswd string) *saLdap {
+	sa := &saLdap{ldapServer: ldapServer, ldapPort: ldapPort, ldapSSL: ldapSSL,
+		baseDn: baseDn, bindUserName: userName, bindUserPasswd: userPasswd}
+	return sa
+}
 
-	//connect
-	var l *ldap.LDAPConnection
-	l = ldap.NewLDAPConnection(ldap_server, ldap_port)
-	err = l.Connect()
-	if err != nil {
-		user.Err = err
-		return user
+func (s *saLdap) connect() error {
+	if s.ldapSSL {
+		s.ldap = ldap.NewLDAPSSLConnection(s.ldapServer, s.ldapPort, &tls.Config{InsecureSkipVerify: true})
+		err := s.ldap.Connect()
+		if err != nil {
+			return err
+		}
+	} else {
+		s.ldap = ldap.NewLDAPConnection(s.ldapServer, s.ldapPort)
+		err := s.ldap.Connect()
+		if err != nil {
+			return err
+		}
 	}
-	defer l.Close()
+	return nil
+}
 
-	//blank pasword is not acceptable
-	if passwd == "" {
-		err := errors.New("Please fill in password!")
+func (s *saLdap) AuthUser(account, passwd, domain string) UserAuth {
+	if s.ldap != nil {
+		defer s.ldap.Close()
+	}
+	user := UserAuth{Login: false, HasThumb: false}
+	err := s.connect()
+	if err != nil {
+		fmt.Println("connection error")
 		user.Err = err
 		return user
 	}
 	//authentification (Bind)
-	loginname := account + "@" + domain
-	err = l.Bind(loginname, passwd)
+	loginname := fmt.Sprintf(`%s\%s`, domain, account)
+	err = s.ldap.Bind(loginname, passwd)
 	if err != nil {
-		// err = errors.New("Wrong password or account.")
+		fmt.Println("Wrong password or account.")
 		user.Err = err
 		return user
 	}
 	user.Login = true
 
+	//bind Admin user for query
+	s.ldap.Bind(s.bindUserName, s.bindUserPasswd)
 	//Search, Get entries and Save entry
 	attributes := []string{}
 	filter := fmt.Sprintf(
@@ -63,12 +84,12 @@ func SaAuthCheck(
 		account,
 	)
 	search_request := ldap.NewSimpleSearchRequest(
-		base_dn,
+		s.baseDn,
 		2, //ScopeWholeSubtree 2, ScopeSingleLevel 1, ScopeBaseObject 0 ??
 		filter,
 		attributes,
 	)
-	sr, _ := l.Search(search_request)
+	sr, _ := s.ldap.Search(search_request)
 	user.Account = account
 	user.Name = sr.Entries[0].GetAttributeValue("name")
 	user.Mail = sr.Entries[0].GetAttributeValue("mail")
