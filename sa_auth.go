@@ -1,7 +1,7 @@
 package sa_auth
 
 import (
-	// "errors"
+	"errors"
 	"fmt"
 	"github.com/mavricknz/ldap"
 	// "github.com/go-ldap/ldap"
@@ -76,7 +76,11 @@ func (s *saLdap) AuthUser(account, passwd, domain string) UserAuth {
 	user.Login = true
 
 	//bind Admin user for query
-	s.ldap.Bind(s.bindUserName, s.bindUserPasswd)
+	err = s.ldap.Bind(s.bindUserName, s.bindUserPasswd)
+	if err != nil {
+		user.Err = errors.New("Cannot query user infoormation.")
+		return user
+	}
 	//Search, Get entries and Save entry
 	attributes := []string{}
 	filter := fmt.Sprintf(
