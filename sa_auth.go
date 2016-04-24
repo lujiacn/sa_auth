@@ -136,9 +136,15 @@ func (s *saLdap) GetUser(account string) UserAuth {
 		filter,
 		attributes,
 	)
-	sr, _ := s.ldap.Search(search_request)
+	sr, err := s.ldap.Search(search_request)
+	if err != nil {
+		user.Err = err
+		return user
+	}
 	user.Account = account
-	user.Name = sr.Entries[0].GetAttributeValue("name")
-	user.Mail = sr.Entries[0].GetAttributeValue("mail")
+	if sr != nil && len(sr.Entries) > 0 {
+		user.Name = sr.Entries[0].GetAttributeValue("name")
+		user.Mail = sr.Entries[0].GetAttributeValue("mail")
+	}
 	return user
 }
