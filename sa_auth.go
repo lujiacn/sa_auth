@@ -104,3 +104,41 @@ func (s *saLdap) AuthUser(account, passwd, domain string) UserAuth {
 
 	return user
 }
+
+//GetUser only search account name and email
+func (s *saLdap) GetUser(account string) UserAuth {
+	if s.ldap != nil {
+		defer s.ldap.Close()
+	}
+	user := UserAuth{Login: false, HasThumb: false}
+	err := s.connect()
+	if err != nil {
+		fmt.Println("connection error")
+		user.Err = err
+		return user
+	}
+
+	//bind Admin user for query
+	err = s.ldap.Bind(s.bindUserName, s.bindUserPasswd)
+	if err != nil {
+		user.Err = errors.New("Cannot query user infoormation.")
+		return user
+	}
+	//Search, Get entries and Save entry
+	attributes := []string{}
+	filter := fmt.Sprintf(
+		"(&(objectclass=user)(samaccountname=%s))",
+		account,
+	)
+	search_request := ldap.NewSimpleSearchRequest(
+		s.baseDn,
+		2, //ScopeWholeSubtree 2, ScopeSingleLevel 1, ScopeBaseObject 0 ??
+		filter,
+		attributes,
+	)
+	sr, _ := s.ldap.Search(search_request)
+	user.Account = account
+	user.Name = sr.Entries[0].GetAttributeValue("name")
+	user.Mail = sr.Entries[0].GetAttributeValue("mail")
+	return user
+}
