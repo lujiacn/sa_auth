@@ -27,6 +27,7 @@ type saLdap struct {
 	bindUserName   string
 	bindUserPasswd string
 	ldap           *ldap.LDAPConnection
+	tlsConfig      *tls.Config
 }
 
 func NewSaLdap(ldapServer string, ldapPort uint16,
@@ -39,7 +40,12 @@ func NewSaLdap(ldapServer string, ldapPort uint16,
 
 func (s *saLdap) connect() error {
 	if s.ldapSSL {
-		s.ldap = ldap.NewLDAPSSLConnection(s.ldapServer, s.ldapPort, &tls.Config{InsecureSkipVerify: true})
+		if s.tlsConfig == nil {
+			s.ldap = ldap.NewLDAPSSLConnection(s.ldapServer, s.ldapPort, &tls.Config{InsecureSkipVerify: true})
+		} else {
+
+			s.ldap = ldap.NewLDAPSSLConnection(s.ldapServer, s.ldapPort, s.tlsConfig)
+		}
 		err := s.ldap.Connect()
 		if err != nil {
 			return err
