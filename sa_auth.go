@@ -154,6 +154,9 @@ func (s *saLdap) GetUser(account string) UserAuth {
 	if sr != nil && len(sr.Entries) > 0 {
 		user.Name = sr.Entries[0].GetAttributeValue("name")
 		user.Mail = sr.Entries[0].GetAttributeValue("mail")
+		user.Mail = sr.Entries[0].GetAttributeValue("givenname")
+		user.Mail = sr.Entries[0].GetAttributeValue("sn")
+		user.Mail = sr.Entries[0].GetAttributeValue("department")
 	}
 	return user
 }
