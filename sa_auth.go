@@ -14,6 +14,9 @@ type UserAuth struct {
 	HasThumb bool
 	Account  string
 	Mail     string
+	First    string
+	Last     string
+	Depart   string
 	Thumb    string
 	Name     string
 	Err      error
@@ -154,9 +157,9 @@ func (s *saLdap) GetUser(account string) UserAuth {
 	if sr != nil && len(sr.Entries) > 0 {
 		user.Name = sr.Entries[0].GetAttributeValue("name")
 		user.Mail = sr.Entries[0].GetAttributeValue("mail")
-		user.Mail = sr.Entries[0].GetAttributeValue("givenname")
-		user.Mail = sr.Entries[0].GetAttributeValue("sn")
-		user.Mail = sr.Entries[0].GetAttributeValue("department")
+		user.Last = sr.Entries[0].GetAttributeValue("givenname")
+		user.First = sr.Entries[0].GetAttributeValue("sn")
+		user.Depart = sr.Entries[0].GetAttributeValue("department")
 	}
 	return user
 }
