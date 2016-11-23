@@ -133,7 +133,7 @@ func (s *saLdap) GetUser(account string) UserAuth {
 	//bind Admin user for query
 	err = s.ldap.Bind(s.bindUserName, s.bindUserPasswd)
 	if err != nil {
-		user.Err = errors.New("Cannot query user infoormation.")
+		user.Err = errors.New("Cannot query user information.")
 		return user
 	}
 	//Search, Get entries and Save entry
