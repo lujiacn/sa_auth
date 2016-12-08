@@ -110,6 +110,9 @@ func (s *saLdap) AuthUser(account, passwd, domain string) UserAuth {
 	user.Name = sr.Entries[0].GetAttributeValue("name")
 	user.Mail = sr.Entries[0].GetAttributeValue("mail")
 	user.Thumb = sr.Entries[0].GetAttributeValue("thumbnailphoto")
+	user.Last = sr.Entries[0].GetAttributeValue("givenname")
+	user.First = sr.Entries[0].GetAttributeValue("sn")
+	user.Depart = sr.Entries[0].GetAttributeValue("department")
 	if user.Thumb != "" {
 		user.HasThumb = true
 	}
@@ -157,6 +160,7 @@ func (s *saLdap) GetUser(account string) UserAuth {
 	if sr != nil && len(sr.Entries) > 0 {
 		user.Name = sr.Entries[0].GetAttributeValue("name")
 		user.Mail = sr.Entries[0].GetAttributeValue("mail")
+		user.Thumb = sr.Entries[0].GetAttributeValue("thumbnailphoto")
 		user.Last = sr.Entries[0].GetAttributeValue("givenname")
 		user.First = sr.Entries[0].GetAttributeValue("sn")
 		user.Depart = sr.Entries[0].GetAttributeValue("department")
