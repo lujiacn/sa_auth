@@ -3,6 +3,7 @@ package sa_auth
 import (
 	"errors"
 	"fmt"
+
 	"github.com/mavricknz/ldap"
 	// "github.com/go-ldap/ldap"
 	//"reflect"
@@ -164,6 +165,10 @@ func (s *saLdap) GetUser(account string) UserAuth {
 		user.Last = sr.Entries[0].GetAttributeValue("givenname")
 		user.First = sr.Entries[0].GetAttributeValue("sn")
 		user.Depart = sr.Entries[0].GetAttributeValue("department")
+
+		if user.Thumb != "" {
+			user.HasThumb = true
+		}
 	}
 	return user
 }
