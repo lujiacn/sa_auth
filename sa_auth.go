@@ -4,23 +4,22 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/mavricknz/ldap"
-	// "github.com/go-ldap/ldap"
-	//"reflect"
 	"crypto/tls"
+
+	"github.com/mavricknz/ldap"
 )
 
-type UserAuth struct {
-	Login    bool
-	HasThumb bool
-	Account  string
-	Mail     string
-	First    string
-	Last     string
-	Depart   string
-	Thumb    string
-	Name     string
-	Err      error
+type Auth struct {
+	IsLoggedIn bool
+	HasThumb   bool
+	SAMAccount string
+	Mail       string
+	First      string
+	Last       string
+	Depart     string
+	Thumb      string
+	Name       string
+	Err        error
 }
 
 type saLdap struct {
@@ -63,33 +62,40 @@ func (s *saLdap) connect() error {
 	return nil
 }
 
-func (s *saLdap) AuthUser(account, passwd, domain string) UserAuth {
-	if s.ldap != nil {
-		defer s.ldap.Close()
-	}
-	user := UserAuth{Login: false, HasThumb: false}
+func (s *saLdap) Authenticate(account, passwd, domain string) *Auth {
+	defer func() {
+		if s.ldap != nil {
+			s.ldap.Close()
+		}
+	}()
+
+	//Default
+	auth := &Auth{IsLoggedIn: false, HasThumb: false}
 	err := s.connect()
+
 	if err != nil {
-		fmt.Println("connection error")
-		user.Err = err
-		return user
+		auth.Err = err
+		return auth
 	}
+
 	//authentification (Bind)
 	loginname := fmt.Sprintf(`%s\%s`, domain, account)
 	err = s.ldap.Bind(loginname, passwd)
+
 	if err != nil {
-		fmt.Println("Wrong password or account.")
-		user.Err = err
-		return user
+		auth.Err = errors.New("Invalid account or password.")
+		return auth
 	}
-	user.Login = true
+
+	auth.IsLoggedIn = true
 
 	//bind Admin user for query
 	err = s.ldap.Bind(s.bindUserName, s.bindUserPasswd)
 	if err != nil {
-		user.Err = errors.New("Cannot query user information.")
-		return user
+		auth.Err = errors.New("Cannot query user information due to limited privilege.")
+		return auth
 	}
+
 	//Search, Get entries and Save entry
 	attributes := []string{}
 	filter := fmt.Sprintf(
@@ -104,42 +110,45 @@ func (s *saLdap) AuthUser(account, passwd, domain string) UserAuth {
 	)
 	sr, err := s.ldap.Search(search_request)
 	if err != nil {
-		user.Err = err
-		return user
+		auth.Err = err
+		return auth
 	}
-	user.Account = account
-	user.Name = sr.Entries[0].GetAttributeValue("name")
-	user.Mail = sr.Entries[0].GetAttributeValue("mail")
-	user.Thumb = sr.Entries[0].GetAttributeValue("thumbnailphoto")
-	user.Last = sr.Entries[0].GetAttributeValue("givenname")
-	user.First = sr.Entries[0].GetAttributeValue("sn")
-	user.Depart = sr.Entries[0].GetAttributeValue("department")
-	if user.Thumb != "" {
-		user.HasThumb = true
+	auth.SAMAccount = account
+	auth.Name = sr.Entries[0].GetAttributeValue("name")
+	auth.Mail = sr.Entries[0].GetAttributeValue("mail")
+	auth.Thumb = sr.Entries[0].GetAttributeValue("thumbnailphoto")
+	auth.Last = sr.Entries[0].GetAttributeValue("givenname")
+	auth.First = sr.Entries[0].GetAttributeValue("sn")
+	auth.Depart = sr.Entries[0].GetAttributeValue("department")
+	if auth.Thumb != "" {
+		auth.HasThumb = true
 	}
 
-	return user
+	return auth
 }
 
 //GetUser only search account name and email
-func (s *saLdap) GetUser(account string) UserAuth {
-	if s.ldap != nil {
-		defer s.ldap.Close()
-	}
-	user := UserAuth{Login: false, HasThumb: false}
+func (s *saLdap) QueryUser(account string) *Auth {
+	defer func() {
+		if s.ldap != nil {
+			s.ldap.Close()
+		}
+	}()
+
+	auth := &Auth{IsLoggedIn: false, HasThumb: false}
 	err := s.connect()
 	if err != nil {
-		fmt.Println("connection error")
-		user.Err = err
-		return user
+		auth.Err = err
+		return auth
 	}
 
 	//bind Admin user for query
 	err = s.ldap.Bind(s.bindUserName, s.bindUserPasswd)
 	if err != nil {
-		user.Err = errors.New("Cannot query user information.")
-		return user
+		auth.Err = errors.New("Cannot query user information due to limited privilege.")
+		return auth
 	}
+
 	//Search, Get entries and Save entry
 	attributes := []string{}
 	filter := fmt.Sprintf(
@@ -154,21 +163,19 @@ func (s *saLdap) GetUser(account string) UserAuth {
 	)
 	sr, err := s.ldap.Search(search_request)
 	if err != nil {
-		user.Err = err
-		return user
+		auth.Err = err
+		return auth
 	}
-	user.Account = account
-	if sr != nil && len(sr.Entries) > 0 {
-		user.Name = sr.Entries[0].GetAttributeValue("name")
-		user.Mail = sr.Entries[0].GetAttributeValue("mail")
-		user.Thumb = sr.Entries[0].GetAttributeValue("thumbnailphoto")
-		user.Last = sr.Entries[0].GetAttributeValue("givenname")
-		user.First = sr.Entries[0].GetAttributeValue("sn")
-		user.Depart = sr.Entries[0].GetAttributeValue("department")
+	auth.SAMAccount = account
+	auth.Name = sr.Entries[0].GetAttributeValue("name")
+	auth.Mail = sr.Entries[0].GetAttributeValue("mail")
+	auth.Thumb = sr.Entries[0].GetAttributeValue("thumbnailphoto")
+	auth.Last = sr.Entries[0].GetAttributeValue("givenname")
+	auth.First = sr.Entries[0].GetAttributeValue("sn")
+	auth.Depart = sr.Entries[0].GetAttributeValue("department")
+	if auth.Thumb != "" {
+		auth.HasThumb = true
+	}
 
-		if user.Thumb != "" {
-			user.HasThumb = true
-		}
-	}
-	return user
+	return auth
 }
