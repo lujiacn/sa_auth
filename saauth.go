@@ -1,4 +1,4 @@
-package sa_auth
+package saauth
 
 import (
 	"errors"
