@@ -166,6 +166,10 @@ func (s *saLdap) QueryUser(account string) *Auth {
 		auth.Err = err
 		return auth
 	}
+	if len(sr.Entries) == 0 {
+		auth.Err = errors.New(fmt.Sprintf("Account %s not exist!", account))
+		return auth
+	}
 	auth.SAMAccount = account
 	auth.Name = sr.Entries[0].GetAttributeValue("name")
 	auth.Mail = sr.Entries[0].GetAttributeValue("mail")
